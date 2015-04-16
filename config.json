@@ -3,7 +3,7 @@
 	"display_languages": "EN,ID,RU,ES,FR,PT,DE,ZH_CN,PL,AR",
 	"static": {
 		"url": "https://animeshsaxena.github.io/binary-static/",
-		"version": "3.4.2"
+		"version": "3.5.0"
 	},
 	"marketing": {
 		"google_tag_manager": "GTM-MZWFF7"
@@ -35,7 +35,7 @@
 			"RU": "binaryhelplineru"
 		}
 	},
-	"binary_js_hash": "e7ade7b87c2bb1a85a088aff5871091c",
+	"binary_js_hash": "b486fb2ba59f20d221d09ec13a3c968e",
 	"binary_lib_hash": "a44a09c7cb8dd1a7ef6136374571e08e",
 	"binary_data_hash": "5eecf346f14711942ce85d0498838043",
 	"binary_css_hash": "00a59cc040aeba5e46d81529f4dbec8b"

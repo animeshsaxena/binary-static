@@ -2026,6 +2026,9 @@ TimePicker.prototype = {
         return true;
     }
 };
+
+// if Track:js is already loaded, we need to initialize it
+if (trackJs) trackJs.configure(window._trackJs);
 ;//
 //
 //
@@ -2364,7 +2367,7 @@ LiveChartTick.prototype.process_data = function(point) {
             epoch: parseInt(point[1]),
             quote: parseFloat(point[2])
         };
-        
+
         if (!this.chart) return;
         if (!this.chart.series) return;
 
@@ -2441,9 +2444,8 @@ LiveChartOHLC.prototype.process_corp_action = function(action) {
 
 LiveChartOHLC.prototype.process_ohlc = function(ohlc) {
     var epoch = parseInt(ohlc[0]);
-    if (!this.chart && !this.chart.series) {
-        return;
-    }
+    if (!this.chart) return;
+    if (!this.chart.series) return;
     var ohlc_pt = {
         x:     epoch * 1000,
         open:  parseFloat(ohlc[1]),
@@ -2465,9 +2467,8 @@ LiveChartOHLC.prototype.process_tick = function(tickInput) {
     };
     this.spot = tick.quote;
 
-    if (!this.chart && !this.chart.series) {
-        return;
-    }
+    if (!this.chart) return;
+    if (!this.chart.series) return;
 
     var data = this.chart.series[0].options.data;
     if (data.length > 0 && data[data.length - 1].x > (tick.epoch - this.candlestick.period)) {
@@ -2812,9 +2813,18 @@ LiveChartIndicator['Barrier'] = function(params) {
 
 LiveChartIndicator['Barrier'].prototype = {
     remove: function(that) {
+        if(!that.chart){
+            return;
+        }
         if (this.axis == 'y') {
+            if(!that.chart.yAxis){
+                return;
+            }
             that.chart.yAxis[0].removePlotLine(this.id);
         } else {
+            if(!that.chart.xAxis){
+                return;
+            }
             that.chart.xAxis[0].removePlotLine(this.id);
         }
     },
@@ -2849,9 +2859,18 @@ LiveChartIndicator['Barrier'].prototype = {
                 plot_option.label = {text: text.localize(this.label), align: 'center'};
             }
         }
+        if (!that.chart) {
+            return;
+        }
         if (this.axis == 'y') {
+            if (!that.chart.yAxis) {
+                return;
+            }
             that.chart.yAxis[0].addPlotLine(plot_option);
         } else {
+            if (!that.chart.xAxis) {
+                return;
+            }
             that.chart.xAxis[0].addPlotLine(plot_option);
         }
         this.painted = true;
@@ -7438,9 +7457,8 @@ BetForm.Time.EndTime.prototype = {
                                     $self.evaluate_contract_outcome();
                                     return;
                                 } else {
-                                    if (!$self.chart && !$self.chart.series) {
-                                        return;
-                                    }
+                                    if (!$self.chart) return;
+                                    if (!$self.chart.series) return;
                                     $self.chart.series[0].addPoint([$self.counter, tick.quote], true, false);
                                     $self.applicable_ticks.push(tick);
                                     var indicator_key = '_' + $self.counter;

@@ -575,6 +575,38 @@ var gtm_data_layer_info = function() {
     return gtm_data_layer_info;
 };
 
+var User = function() {
+    this.email =  $.cookie('email');
+    var loginid_list = $.cookie('loginid_list');
+
+    if(this.email === null || typeof this.email === "undefined") {
+        this.is_logged_in = false;
+    } else {
+        this.is_logged_in = true;
+
+        if(loginid_list !== null && typeof loginid_list !== "undefined") {
+            var loginid_array = [];
+            var loginids = loginid_list.split('+').sort();
+
+            for (var i = 0; i < loginids.length; i++) {
+                var real = 0;
+                var disabled = 0;
+                var items = loginids[i].split(':');
+                if (items[1] == 'R') {
+                    real = 1;
+                }
+                if (items[2] == 'D') {
+                    disabled = 1;
+                }
+
+                loginid_array.push({'id':items[0], 'real':real, 'disabled':disabled });
+            }
+
+            this.loginid_array = loginid_array;
+        }
+    }
+};
+
 var Client = function() {
     this.loginid =  $.cookie('loginid');
     this.is_logged_in = false;
@@ -748,7 +780,7 @@ Menu.prototype = {
                 this.show_main_menu();
             }
         } else {
-            var is_mojo_page = /\/$|\/login|\/home|\/smart-indices|\/open-source-projects|\/white-labels|\/partnerapi$/.test(window.location.pathname);
+            var is_mojo_page = /^\/$|\/login|\/home|\/smart-indices|\/ad|\/open-source-projects|\/white-labels|\/partnerapi$/.test(window.location.pathname);
             if(!is_mojo_page) {
                 trading.addClass('active');
                 this.show_main_menu();
@@ -863,6 +895,7 @@ Menu.prototype = {
 };
 
 var Header = function(params) {
+    this.user = params['user'];
     this.client = params['client'];
     this.settings = params['settings'];
     this.menu = new Menu(params['url']);
@@ -880,8 +913,33 @@ Header.prototype = {
         this.menu.reset();
     },
     show_or_hide_login_form: function() {
-        if (this.client.is_logged_in) {
-            $("#client_loginid").html(this.client.loginid);
+        if (this.user.is_logged_in && this.client.is_logged_in) {
+            var loginid_select;
+            var loginid_array = this.user.loginid_array;
+            for (var i=0;i<loginid_array.length;i++) {
+                var curr_loginid = loginid_array[i].id;
+                var real = loginid_array[i].real;
+                var disabled = loginid_array[i].disabled;
+                var selected = '';
+                if (curr_loginid == this.client.loginid) {
+                    selected = ' selected="selected" ';
+                }
+
+                var loginid_text;
+                if (real == 1) {
+                    loginid_text = text.localize('Real Money') + ' (' + curr_loginid + ')';
+                } else {
+                    loginid_text = text.localize('Virtual Money') + ' (' + curr_loginid + ')';
+                }
+
+                var disabled_text = '';
+                if (disabled == 1) {
+                    disabled_text = ' disabled="disabled" ';
+                }
+
+                loginid_select += '<option value="' + curr_loginid + '" ' + selected + disabled_text + '>' + loginid_text +  '</option>';
+            }
+            $("#client_loginid").html(loginid_select);
         }
     },
     simulate_input_placeholder_for_ie: function() {
@@ -1066,8 +1124,9 @@ ToolTip.prototype = {
     },
 };
 
-var Contents = function(client) {
+var Contents = function(client, user) {
     this.client = client;
+    this.user = user;
     this.tooltip = new ToolTip();
 };
 
@@ -1091,13 +1150,38 @@ Contents.prototype = {
             if(this.client.is_real) {
                 $('.by_client_type.client_real').removeClass('invisible');
                 $('.by_client_type.client_real').show();
+
+                $('#topbar').addClass('dark-blue');
+                $('#topbar').removeClass('orange');
             } else {
                 $('.by_client_type.client_virtual').removeClass('invisible');
                 $('.by_client_type.client_virtual').show();
+
+                var loginid_array = this.user.loginid_array;
+                var has_real = 0;
+                for (var i=0;i<loginid_array.length;i++) {
+                    var loginid = loginid_array[i].id;
+                    var real = loginid_array[i].real;
+
+                    if (real == 1) {
+                        has_real = 1;
+                        break;
+                    }
+                }
+                if (has_real == 1) {
+                    $('.virtual-upgrade-link').addClass('invisible');
+                    $('.virtual-upgrade-link').hide();
+                }
+
+                $('#topbar').addClass('orange');
+                $('#topbar').removeClass('dark-blue');
             }
         } else {
             $('.by_client_type.client_logged_out').removeClass('invisible');
             $('.by_client_type.client_logged_out').show();
+
+            $('#topbar').removeClass('orange');
+            $('#topbar').addClass('dark-blue');
         }
     },
     update_body_id: function() {
@@ -1117,11 +1201,12 @@ Contents.prototype = {
 
 var Page = function(config) {
     config = typeof config !== 'undefined' ? config : {};
+    this.user = new User();
     this.client = new Client();
     this.url = new URL();
     this.settings = new InScriptStore(config['settings']);
-    this.header = new Header({ client: this.client, settings: this.settings, url: this.url});
-    this.contents = new Contents(this.client);
+    this.header = new Header({ user: this.user, client: this.client, settings: this.settings, url: this.url});
+    this.contents = new Contents(this.client, this.user);
 };
 
 Page.prototype = {
@@ -1136,9 +1221,10 @@ Page.prototype = {
     },
     on_load: function() {
         this.url.reset();
-        this.header.on_load();
         this.localize_for(this.language());
+        this.header.on_load();
         this.on_change_language();
+        this.on_change_loginid();
         this.record_affiliate_exposure();
         this.contents.on_load();
         $('#current_width').val(get_container_width());//This should probably not be here.
@@ -1152,6 +1238,12 @@ Page.prototype = {
         $('#language_select').on('change', 'select', function() {
             var language = $(this).find('option:selected').attr('class');
             document.location = that.url_for_language(language);
+        });
+    },
+    on_change_loginid: function() {
+        var that = this;
+        $('#client_loginid').on('change', function() {
+            $('#loginid-switch-form').submit();
         });
     },
     localize_for: function(language) {
@@ -1517,7 +1609,7 @@ Localizable.prototype = {
 //http://stackoverflow.com/questions/11487216/cors-with-jquery-and-xdomainrequest-in-ie8-9
 //
 $(document).ajaxSuccess(function () {
-    var contents = new Contents(page.client);
+    var contents = new Contents(page.client, page.user);
     contents.on_load();
 });
 
@@ -2028,7 +2120,7 @@ TimePicker.prototype = {
 };
 
 // if Track:js is already loaded, we need to initialize it
-if (trackJs) trackJs.configure(window._trackJs);
+if (typeof trackJs !== 'undefined') trackJs.configure(window._trackJs);
 ;//
 //
 //
@@ -2920,7 +3012,7 @@ var trading_times_init = function() {
      onSelect: function( dateText, picker ){
          trading_times.tabs( "destroy" );
          showLoadingImage(trading_times);
-         url = page.url.url_for('trading_times.cgi', 'date=' + dateText, 'cached');
+         url = page.url.url_for('resources/trading_times', 'date=' + dateText, 'cached');
          $.ajax({
                   url: url,
                   data:  { 'ajax_only': 1 },
@@ -2995,36 +3087,6 @@ onLoad.queue_for_url(function() {
         return false;
     });
 }, '/c/paymentagent_list');
-;var signup = function() {
-    var signup = $('.login-button, .dialog, .overlay').on('click', function() {
-        $('.overlay').toggleClass('hidden');
-    });
-};
-
-var xscroll = function() {
-    var xscroll = $("#xscroll").click(function() {
-        $('html, body').animate({
-            scrollTop: $("#section2").offset().top
-        }, 1000);
-    });
-};
-
-pjax_config_page('/home3', function() {
-    return {
-        onLoad: function() {
-            signup();
-        },
-    };
-});
-
-pjax_config_page('/home4', function() {
-    return {
-        onLoad: function() {
-            signup();
-            xscroll();
-        },
-    };
-});
 ;var trade_contract_back = function () {
     $('#find_another_contract').on('click', function (e) {
         if (page.url.history_supported) {
@@ -3127,7 +3189,7 @@ pjax_config_page('rise_fall_table', function() {
                 $(this).hide();
                 $('#rise_fall_calculating').show();
                 var form = $('form[name=rise_fall]').get(0);
-                var url = page.url.url_for('rise_fall_table.cgi', getFormParams(form));
+                var url = page.url.url_for('resources/rise_fall_table', getFormParams(form));
                 $('#rise_fall_prices_div').html('');
                 $.ajax({
                     url: url,
@@ -3975,6 +4037,7 @@ BetAnalysis.tab_last_digit = new BetAnalysis.DigitInfo();
                         BetForm.underlying_drop_down.update_for_submarket(this.value);
                         //If Underlying Changed because of submarket
                         if (BetForm.attributes.model.underlying() != BetForm.attributes.underlying()) {
+                            BetForm.attributes.model.underlying(BetForm.attributes.underlying());
                             that.update_for_underlying(BetForm.attributes.underlying());
                         }
                     }).addClass('unbind_later');
@@ -4491,7 +4554,7 @@ BetAnalysis.tab_last_digit = new BetAnalysis.DigitInfo();
             model: function() {
                 return {
                     form_name: function(form_name) {
-                        var fallback = 'bets_tab_risefall';
+                        var fallback = 'bets_tab_callput';
                         if(form_name) {
                             LocalStore.set('bet_page.form_name', form_name);
                         }
@@ -4938,8 +5001,18 @@ BetForm.Time.prototype = {
         this.trading_time.init();
         this.duration.init();
         this.end_time.init();
-        $('#expiry_type').val(this.model.expiry_type);
         this.register();
+        if (BetForm.attributes.model.form_name() == "digits" || BetForm.attributes.model.form_name() == "asian") {
+            var expiry_val = 'duration';
+            $('#expiry_type').val(expiry_val);
+            page.url.invalidate();
+            LocalStore.set('bet_page.expiry_type', expiry_val);
+            BetForm.attributes.model.expiry_type(expiry_val);
+            this.model.expiry_type = expiry_val;
+            $('#duration_amount').val(this.trading_time.min_unit().min);
+        } else {
+            $('#expiry_type').val(this.model.expiry_type);
+        }
         this.update_ui();
     },
     register: function() {
@@ -5297,13 +5370,17 @@ BetForm.TradingTime.prototype = {
         return trading_dates;
     },
     get_trading_days: function() {
-        var underlying_symbol = this.underlying();
+        var underlying_symbol = BetForm.attributes.underlying();
+        var barrier = BetForm.attributes.barrier_1();
         if (typeof this.trading_info[underlying_symbol] === 'undefined') {
             var that = this;
             $.ajax({
                 url: page.url.url_for('trade_get.cgi'),
                 data: { controller_action: 'trading_days',
-                        underlying_symbol: underlying_symbol
+                        underlying_symbol: underlying_symbol,
+                        form_name: BetForm.attributes.form_name(),
+                        date_start: BetForm.attributes.start_time(),
+                        barrier: barrier,
                     },
                 dataType:'json',
                 async: false
@@ -5621,7 +5698,7 @@ BetForm.Time.EndTime.prototype = {
             }
         },
         error_handler: function() {
-            this.container().find('div.rbox-lowpad:first').html("There was a problem accessing the server.");
+            this.container().find('div.rbox-lowpad:first').html(text.localize("There was a problem accessing the server."));
             this.streaming.stop();
         },
         price_update: function(data) {
@@ -5653,7 +5730,8 @@ BetForm.Time.EndTime.prototype = {
         buy_bet: function (form) {
             var that = this;
             var timeout = 60000;
-            that.disable_buy_buttons();
+            BetPrice.order_form.disable_buy_buttons();
+            that.hide_buy_buttons();
 
             if(!page.client.is_logged_in) {
                 window.location.href = page.url.url_for('login');
@@ -5698,7 +5776,8 @@ BetForm.Time.EndTime.prototype = {
                 throw new Error("Invalid server response: " + data);
             }
             $('.price_box').fadeTo(0, 1);
-            this.enable_buy_buttons();
+            BetPrice.order_form.enable_buy_buttons();
+            this.display_buy_buttons();
         },
         on_buy_bet_error: function (form, jqXHR, resp_status, exp) {
             var details = '' + exp;
@@ -5707,12 +5786,13 @@ BetForm.Time.EndTime.prototype = {
             } else if (document.location.href.match(/^http:/) && (!details || details.match(/access/i))) {
                 details += '<ul>Please <a href="' + document.location.href.replace('http://', 'https://') + '">continue browsing using HTTPS secure protocol</a></ul>';
             } else {
-                details += 'There was a problem accessing the server during purchase.';
+                details += text.localize('There was a problem accessing the server during purchase.');
             }
             var width = this.container().width(); // since the error message could be any size, set the continer size to a good value
             this.display_buy_error('<div style="width: ' + width + 'px;"><h3>Error</h3><p>' + details + ' </p></div>');
             $('.price_box').fadeTo(0, 1);
-            this.enable_buy_buttons();
+            BetPrice.order_form.enable_buy_buttons();
+            this.display_buy_buttons();
         },
         buy_response_container: function () {
             if (!_buy_response_container) {
@@ -5866,6 +5946,7 @@ BetForm.Time.EndTime.prototype = {
             var that = this;
             var con = this.buy_response_container();
             con.addClass('bet_confirm_error');
+            data += '<p>' + text.localize('Please confirm the trade on your statement before proceeding.') + '</p>';
             con.children('div').first().html(data);
             con.show();
             var _clear_results = function () { that.clear_buy_results(); };
@@ -5883,11 +5964,11 @@ BetForm.Time.EndTime.prototype = {
             con.hide().remove();
             _buy_response_container = null;
         },
-        disable_buy_buttons: function() {
+        hide_buy_buttons: function() {
             this.deregister();
             this.order_form.hide_buy_button();
         },
-        enable_buy_buttons: function() {
+        display_buy_buttons: function() {
             this.on_buy();
             this.order_form.show_buy_button();
         },
@@ -5962,6 +6043,12 @@ BetForm.Time.EndTime.prototype = {
                 },
                 show_buy_button: function() {
                     return $('button[name^="btn_buybet"]').parent().show();
+                },
+                disable_buy_buttons: function() {
+                    $('button[name^="btn_buybet"]').attr('disabled','disabled');
+                },
+                enable_buy_buttons: function() {
+                    $('button[name^="btn_buybet"]').removeAttr('disabled');
                 },
                 update_from_stream: function(stream) {
                     var prices = this.prices_from_stream(stream);
@@ -7311,8 +7398,8 @@ BetForm.Time.EndTime.prototype = {
             $self.symbol = data.symbol;
             $self.display_symbol = data.display_symbol;
             $self.contract_start_ms = parseInt(data.contract_start * 1000);
-            $self.contract_type = data.contract_type;
-            $self.set_barrier = ($self.contract_type.match('DIGIT')) ? false : true;
+            $self.contract_category = data.contract_category;
+            $self.set_barrier = ($self.contract_category.match('digits')) ? false : true;
             $self.display_decimal = 0;
             var tick_frequency = 5;
 
@@ -7340,7 +7427,7 @@ BetForm.Time.EndTime.prototype = {
             var $self = this;
 
             var exit_tick_index = $self.number_of_ticks - 1;
-            if ($self.contract_type.match('ASIAN')) {
+            if ($self.contract_category.match('asian')) {
                 $self.ticks_needed = $self.number_of_ticks;
                 $self.x_indicators = {
                     '_0': { label: 'Tick 1', id: 'start_tick'},
@@ -7349,7 +7436,7 @@ BetForm.Time.EndTime.prototype = {
                     label: 'Exit Spot',
                     id: 'exit_tick',
                 };
-            } else if ($self.contract_type.match('FLASH')) {
+            } else if ($self.contract_category.match('callput')) {
                 $self.ticks_needed = $self.number_of_ticks + 1;
                 $self.x_indicators = {
                     '_0': { label: 'Entry Spot', id: 'entry_tick'},
@@ -7358,7 +7445,7 @@ BetForm.Time.EndTime.prototype = {
                     label: 'Exit Spot',
                     id: 'exit_tick',
                 };
-            } else if ($self.contract_type.match('DIGIT')) {
+            } else if ($self.contract_category.match('digits')) {
                 $self.ticks_needed = $self.number_of_ticks;
                 $self.x_indicators = {
                     '_0': { label: 'Tick 1', id: 'start_tick'},
@@ -7504,7 +7591,7 @@ BetForm.Time.EndTime.prototype = {
                 return;
             }
 
-            var barrier_type = $self.contract_type.match('ASIAN') ? 'asian' : 'static';
+            var barrier_type = $self.contract_category.match('asian') ? 'asian' : 'static';
 
             if (barrier_type === 'static') {
                 var barrier_tick = $self.applicable_ticks[0];
@@ -7951,37 +8038,14 @@ onLoad.queue_for_url(function() {
         }
     });
 };
-;//// togglePromoCodeTnC ////////////////////////////////////////////
-//
-// triggered when the promocode field on the account opening form
-// loses focus. If a promocode is entered, additional T&C will be
-// shown, and the Client will have to agree to them when opening
-// the account.
-//
-////////////////////////////////////////////////////////////////////
-var togglePromoCodeTnC = function(event)
-{
-    var o = $(event.target);
-
-    if (o.val() !== '')
-    {
-        $('#formlayout').find('#comment').find('span').removeClass('invisible');
-    }
-    else
-    {
-        $('#formlayout').find('#comment').find('span').addClass('invisible');
-    }
-};
-
-var client_form;
+;var client_form;
 onLoad.queue(function() {
         client_form = new ClientForm({restricted_countries: page.settings.get('restricted_countries'), valid_loginids: page.settings.get('valid_loginids')});
 });
 
-pjax_config_page('linkto_acopening', function() {
+pjax_config_page('user/upgrade', function() {
     return {
         onLoad: function() {
-            $('#promotionalcode').blur(togglePromoCodeTnC);
             client_form.on_residence_change();
             select_user_country();
             if(page.client.is_logged_in) {
@@ -8103,31 +8167,18 @@ ClientForm.prototype = {
     self_exclusion: function() {
         return {
             has_something_to_save: function() {
-                    var MAXCASHBAL = document.getElementById('MAXCASHBAL');
-                    var DAILYTURNOVERLIMIT = document.getElementById('DAILYTURNOVERLIMIT');
-                    var MAXOPENPOS = document.getElementById('MAXOPENPOS');
-                    var SESSIONDURATION = document.getElementById('SESSIONDURATION');
-                    var EXCLUDEUNTIL = document.getElementById('EXCLUDEUNTIL');
-                    var input_length = 0;
-
-                    if (MAXCASHBAL) { input_length += MAXCASHBAL.value.length; }
-
-                    if (DAILYTURNOVERLIMIT) { input_length += DAILYTURNOVERLIMIT.value.length; }
-
-                    if (MAXOPENPOS) { input_length += MAXOPENPOS.value.length; }
-
-                    if (SESSIONDURATION) { input_length += SESSIONDURATION.value.length; }
-
-                    if (EXCLUDEUNTIL) { input_length += EXCLUDEUNTIL.value.length; }
-
-                    if (input_length > 0)
-                    {
-                            return true;
+                var el, i;
+                var names = ['MAXCASHBAL', 'MAXOPENPOS',
+                             'DAILYTURNOVERLIMIT', 'DAILYLOSSLIMIT',
+                             '7DAYTURNOVERLIMIT', '7DAYLOSSLIMIT',
+                             'SESSIONDURATION', 'EXCLUDEUNTIL'];
+                for (i=0; i<names.length; i++) {
+                    el = document.getElementById(names[i]);
+                    if (el && el.value.length > 0) {
+                        return true;
                     }
-                    else
-                    {
-                            return false;
-                    }
+                }
+                return false;
             },
             validate_exclusion_date: function() {
                 var exclusion_date = $('#EXCLUDEUNTIL').val();
@@ -8179,7 +8230,7 @@ ClientForm.prototype = {
             if(that.is_allowed_opening_account_country($(this).val())) {
                 $.ajax({
                     crossDomain:true,
-                    url: page.url.url_for('states_list.cgi'),
+                    url: page.url.url_for('states_list'),
                     data: {"c":$('#residence').get(0).value,"l": page.language()},
                     async: true,
                     dataType: "html"
@@ -8789,16 +8840,6 @@ function checkCurrencyAmountFormat(input_value)
     return false;
 }
 
-function activate_copy_granters() {
-    $('#portfolio-table').on('click', '.paste_all_granters', function () {
-            $(this).prev('textarea.granter_loginids_input').val(document.getElementById('all_approved_granter_loginids').innerHTML);
-            $(this).siblings('span.button').children('.open_contract_details').attr('granter_loginids', document.getElementById('all_approved_granter_loginids').innerHTML);
-    });
-    $('#portfolio-table').on('change', '.granter_loginids_input', function () {
-            $(this).siblings('span.button').children('.open_contract_details').attr('granter_loginids', $(this).val());
-    });
-}
-
 var Portfolio = function () {
     var _price_request = null;
     var elements = $('button.open_contract_details');
@@ -8895,7 +8936,6 @@ pjax_config_page('portfolio', function() {
     return {
         onLoad: function() {
             $('#portfolio-table .hourglass').hide();
-            activate_copy_granters();
             $('#currencyfrom').change(function(event) { currencyConvertorCalculator(event.target); });
             $('#currencyfrom').keyup(function(event) { currencyConvertorCalculator(event.target); });
             $('#currencyfromvalue').change(function(event) { checkCurrencyAmountFormat(event.target); });
@@ -8908,7 +8948,7 @@ pjax_config_page('portfolio', function() {
     $('#pricingtable_calculate').on('click', function(e) {
         e.preventDefault();
         var form = $('form[name=pricing_table_input]').get(0);
-        var url = page.url.url_for('pricing_table.cgi', getFormParams(form));
+        var url = page.url.url_for('resources/pricing_table', getFormParams(form));
         $('#pricingtable_calculate').hide();
         $('#pricingtable_calculating').show();
         $('#pricing_table_prices_div').html('');
@@ -8953,7 +8993,7 @@ var bet_type_select = function() {
         var prev_underlying = $("#pricingtable_underlying").val();
 
         // change underlying option list
-        var ajax_url = page.url.url_for('pricing_table.cgi');
+        var ajax_url = page.url.url_for('resources/pricing_table');
         $.post(
             ajax_url,
             {
@@ -8980,7 +9020,7 @@ var select_underlying_change = function() {
     $("#pricingtable_underlying").on("change", function() {
         var underlying = $(this).val();
         // change lower strike
-        var ajax_url = page.url.url_for('pricing_table.cgi');
+        var ajax_url = page.url.url_for('resources/pricing_table');
         $.post(
             ajax_url,
             {
@@ -9077,13 +9117,6 @@ onLoad.queue_for_url(function () {
     self_exclusion_validate_date();
 }, 'self_exclusion');
 ;onLoad.queue_for_url(function() {
-    $('#portfolio-table')
-        .on('click', '.paste_all_granters', function () {
-            $(this).prev('textarea[name=granter_loginids]').val(document.getElementById('all_approved_granter_loginids').innerHTML);
-        });
-}, 'portfolio|statement|f_manager_history|f_manager_statement|f_manager_confodeposit');
-
-onLoad.queue_for_url(function() {
     $('#statement-date').on('change', function() {
         $('#submit-date').removeClass('invisible');
     });

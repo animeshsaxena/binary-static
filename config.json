@@ -3,7 +3,7 @@
 	"display_languages": "EN,ID,RU,ES,FR,PT,DE,ZH_CN,PL,AR",
 	"static": {
 		"url": "https://static.binary.com/",
-		"version": "3.5.0"
+		"version": "3.6.0"
 	},
 	"marketing": {
 		"google_tag_manager": "GTM-MZWFF7"
@@ -35,8 +35,8 @@
 			"RU": "binaryhelplineru"
 		}
 	},
-	"binary_js_hash": "b486fb2ba59f20d221d09ec13a3c968e",
+	"binary_js_hash": "7d7ea83f7dd56cc841cef2dce528f0e5",
 	"binary_lib_hash": "a44a09c7cb8dd1a7ef6136374571e08e",
-	"binary_data_hash": "b2d8a9c02a5c5751eb92bda7aba8d71e",
-	"binary_css_hash": "2dfb95e277b02c00c3648ffe9c97b82d"
+	"binary_data_hash": "59c60be420c222eb65a5854f94a204e2",
+	"binary_css_hash": "413c87b8635655a4ead1b0c1b3776134"
 }

@@ -473,6 +473,7 @@ fieldset .error-msg {
   color: black;
   background-color: #fef1cf;
   padding: 10px;
+  overflow: hidden;
 }
 
 /* hacks - avoid! */
@@ -685,10 +686,10 @@ ul.checked li {
 #topbar #gmt-clock, #topbar #contact-us {
   padding-top: 3px;
 }
-#topbar #virtualupgrade {
+#topbar .upgrademessage {
   padding-top: 3px;
 }
-#topbar #virtualupgrade a {
+#topbar .upgrademessage a {
   color: white;
   text-decoration: none;
   text-align: center;
@@ -703,12 +704,13 @@ ul.checked li {
   border-radius: 2px;
   font-size: 90%;
   padding: 2px 4px 2px 4px;
+  text-transform: none;
   margin: 0 0 0 10px;
 }
-#topbar #virtualupgrade a:visited {
+#topbar .upgrademessage a:visited {
   color: white;
 }
-#topbar #virtualupgrade a:hover, #topbar #virtualupgrade a:active {
+#topbar .upgrademessage a:hover, #topbar .upgrademessage a:active {
   text-decoration: none;
   background-color: #14602B;
 }
@@ -926,6 +928,14 @@ ul.checked li {
 #footer #footer-regulatory #lga_icon_footer {
   max-width: 140px;
 }
+#footer #footer-regulatory #mfsa_logo {
+  max-width: 320px;
+  margin-top: 10px;
+}
+#footer #footer-regulatory #mifid_logo {
+  max-width: 150px;
+  margin-top: 15px;
+}
 #footer #footer-regulatory #eighteen_plus {
   max-width: 45px;
 }
@@ -962,6 +972,21 @@ ul.checked li {
 }
 #footer #footer-regulatory #appcache-reload-message .message a {
   color: #2e8836;
+}
+#footer #footer-last {
+  background: #2a3052;
+}
+#footer #footer-last a {
+  color: white;
+  text-decoration: underline;
+}
+#footer #footer-last .gambling {
+  margin: 0;
+  text-align: justify;
+  font-size: 74%;
+  font-weight: 400;
+  color: white;
+  line-height: 110%;
 }
 #footer #suspend-message {
   position: fixed;
@@ -1283,6 +1308,52 @@ ul.checked li {
   color: #cc0033;
 }
 
+.lightbox {
+  display: table;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 2000000000;
+}
+
+.lightbox > div {
+  display: table-cell;
+  vertical-align: middle;
+}
+
+.lightbox > div > div {
+  margin-left: auto;
+  margin-right: auto;
+  padding: .5em .5em;
+  width: 44em;
+  text-align: center;
+  background-color: #fff;
+  border-radius: .3em;
+}
+
+#reality-check-content, #balances-content {
+  padding: 0;
+  text-align: left;
+}
+#reality-check-content tr, #reality-check-content td, #balances-content tr, #balances-content td {
+  width: 12.4999%;
+}
+#reality-check-content label, #balances-content label {
+  display: inline-block;
+  width: 10em;
+}
+
+#reality-check-nav, #balances-nav {
+  margin-top: 1em;
+}
+#reality-check-nav span:nth-child(2), #balances-nav span:nth-child(2) {
+  display: inline-block;
+  width: 5em;
+}
+
 #tooltip {
   font-family: proxima-nova, arial, sans-serif;
   font-size: 14px;
@@ -1405,6 +1476,11 @@ abbr {
 }
 .home-content #open-account form {
   font-size: 100%;
+}
+.home-content #open-account #signup_error {
+  background: #e98024;
+  color: white;
+  font-size: 85%;
 }
 .home-content #xsection1 {
   padding: 30px 0;
@@ -4190,6 +4266,11 @@ a.close:hover {
   font-size: 30px !important;
 }
 
+.disabled-link {
+  color: #dedede !important;
+  pointer-events: none;
+}
+
 #header_page #content {
   padding-left: 0;
   padding-right: 0;
@@ -5380,12 +5461,6 @@ table .loss, table .lower {
 
 #okpay {
   background: url("../images/pages/cashier/payment_methods_sprite_1.png") no-repeat -285px -426px;
-  width: 72px;
-  height: 57px;
-}
-
-#cashu {
-  background: url("../images/pages/cashier/payment_methods_sprite_1.png") no-repeat -200px -427px;
   width: 72px;
   height: 57px;
 }

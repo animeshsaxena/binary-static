@@ -2,8 +2,8 @@
 	"website_name": "Binary.com",
 	"display_languages": "EN,ID,RU,ES,FR,PT,DE,ZH_CN,PL,AR",
 	"static": {
-		"url": "https://animeshsaxena.github.io/binary-static/",
-		"version": "3.6.0"
+		"url": "https://static.binary.com/",
+		"version": "3.8.0"
 	},
 	"marketing": {
 		"google_tag_manager": "GTM-MZWFF7"
@@ -35,8 +35,8 @@
 			"RU": "binaryhelplineru"
 		}
 	},
-	"binary_js_hash": "d24c95e69b0c6c5b26281b587eb79470",
+	"binary_js_hash": "dc9a6856d6fcd83aa7de98af0f5cbf47",
 	"binary_lib_hash": "aff93d26dc5260447cf80a76144b4dfc",
-	"binary_data_hash": "84fd7df833b86d30cff72b3e983681f1",
-	"binary_css_hash": "599b31f3687d2ed82c1368e6d3e50559"
+	"binary_data_hash": "0137a57bd12f55c99c6bcb3b5ef69cae",
+	"binary_css_hash": "ca4bc6d31d8fa37c69066c738c475e58"
 }
